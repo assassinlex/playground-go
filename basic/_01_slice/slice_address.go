@@ -15,11 +15,10 @@ func demo01() {
 
 	s1 = append(s1, s1...)
 
-	fmt.Printf("%p\n", &s1) //0x1400000c048
+	fmt.Printf("%p\n", &s1) // 0x1400000c048
 	fmt.Println(s1)         // [1 2 4 8 1 2 4 8]
 
 	s2 := append(s1, s1...)
-	fmt.Printf("%p\n", &s1) //0x1400000c048
+	fmt.Printf("%p\n", &s1) // 0x1400000c048
 	fmt.Println(s2)         // [1 2 4 8 1 2 4 8 1 2 4 8 1 2 4 8]
-
 }
