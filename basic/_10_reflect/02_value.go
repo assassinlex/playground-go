@@ -9,6 +9,9 @@ import (
 /**
  * 1. value.Kind() == type.Kind()  返回值都是 reflect.Kind
  * 2. value.Addr() & value.Element() 是一对互逆操作
+ * 3. [结论] reflect.ValueOf(struct) 不能直接调用 Addr() 方法 [不可寻址]
+ * 3. [结论] reflect.ValueOf(slice) 不能直接调用 Addr() 方法, 但是通过 Index(i) 获得的元素可以 [不可寻址]
+ * 3. [结论] reflect.ValueOf(map) 不能直接调用 Addr() 方法 [不可寻址]
  */
 
 // 基础数据值的反射
@@ -39,6 +42,6 @@ func structValue() {
 }
 
 // 是否可寻址
-func addressable() {
-	//
+func addressable(v reflect.Value) bool {
+	return v.CanAddr()
 }
