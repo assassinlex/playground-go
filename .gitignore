@@ -22,3 +22,6 @@ go.work
 
 # ide
 .idea
+
+# macos
+.DS_Store
