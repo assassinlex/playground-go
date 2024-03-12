@@ -10,7 +10,7 @@ import (
 func ClientTest() {
 	fmt.Println("client test start...")
 	time.Sleep(3 * time.Second) // 3s 后发起测试
-	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	conn, err := net.Dial("tcp", "127.0.0.1:7777")
 	if err != nil {
 		fmt.Println("client connect error")
 		return
@@ -33,7 +33,7 @@ func ClientTest() {
 }
 
 func TestServer(t *testing.T) {
-	s := NewServer("Zinx-server01")
+	s := NewServer()
 	s.AddRouter(&PingRouter{})
 	go ClientTest()
 	s.Serve()

@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"net"
+	"playground/books/01_shen-ru-li-jie-golang/zinx/utils"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/ziface"
 )
 
@@ -16,18 +17,20 @@ type Server struct {
 }
 
 // NewServer Server 构造器
-func NewServer(name string) ziface.IServer {
+func NewServer() ziface.IServer {
+	utils.GlobalObject.Reload()
 	return &Server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8080,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
 	}
 }
 
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listenning at IP: %s:%d\n", s.IP, s.Port)
+	fmt.Printf("[Zinx] Server config %v\n", utils.GlobalObject)
 	go func() {
 		// 1. 获取 TCP Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))

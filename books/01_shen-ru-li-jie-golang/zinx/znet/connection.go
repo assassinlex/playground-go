@@ -80,9 +80,9 @@ func (c *Connection) StartReader() {
 			data: buf,
 		}
 		go func(request ziface.IRequest) { // 从 Routers 中找到注册绑定 Conn 的对应 HandleFunc
-			c.Router.PreHandle(request)
+			//c.Router.PreHandle(request)
 			c.Router.Handle(request)
-			c.Router.PostHandle(request)
+			//c.Router.PostHandle(request)
 		}(&req)
 	}
 }
