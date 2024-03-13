@@ -7,8 +7,8 @@ import (
 // BaseRouter Route 基类
 type BaseRouter struct{}
 
-func (b *BaseRouter) PreHandle(request ziface.IRequest) {}
+func (b *BaseRouter) PreHandle(_ ziface.IRequest) {}
 
-func (b *BaseRouter) Handle(request ziface.IRequest) {}
+func (b *BaseRouter) Handle(_ ziface.IRequest) {}
 
-func (b *BaseRouter) PostHandle(request ziface.IRequest) {}
+func (b *BaseRouter) PostHandle(_ ziface.IRequest) {}

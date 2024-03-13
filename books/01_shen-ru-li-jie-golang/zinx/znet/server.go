@@ -42,7 +42,7 @@ func (s *Server) Start() {
 		if err != nil {
 			panic(fmt.Sprintf("listen tcp addr failed: %v", err))
 		}
-		fmt.Printf("start Zinx server %s:%d succees.", s.IP, s.Port)
+		fmt.Printf("start Zinx server %s:%d succees.\n", s.IP, s.Port)
 		// todo: 生成 connection id
 		cid := s.ConnIDGenerator()
 		//	3. 启动 server

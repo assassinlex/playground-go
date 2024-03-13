@@ -3,7 +3,7 @@ package znet
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"fmt"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/utils"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/ziface"
 )
@@ -52,7 +52,9 @@ func (d *DataPack) Unpack(data []byte) (ziface.IMessage, error) {
 	}
 	//	判断 data len 是否超出服务器允许的最大长度
 	if utils.GlobalObject.MaxPacketSize > 0 && msg.DataLen > utils.GlobalObject.MaxPacketSize {
-		return nil, errors.New("数据包过大")
+		//return nil, errors.New("数据包过大")
+		return nil, fmt.Errorf(
+			"数据包过大: msg.size: %d, config.size: %d\n", msg.DataLen, utils.GlobalObject.MaxPacketSize)
 	}
 	//	只需要讲 head 的数据拆包即可, 后续可以通过 head 中 data len, 再从 conn 中读取一次数据即可获取 data
 	return msg, nil

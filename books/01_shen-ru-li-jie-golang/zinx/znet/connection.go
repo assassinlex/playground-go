@@ -1,7 +1,9 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/ziface"
 )
@@ -62,27 +64,68 @@ func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
+func (c *Connection) SendMsg(id uint32, data []byte) error {
+	// 连接可用性检测
+	if c.Closed == true {
+		return errors.New("当前连接已关闭, 发送数据失败")
+	}
+	// 数据封包
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(id, data))
+	if err != nil {
+		fmt.Printf("msg packed error: id = %d\n", id)
+		return errors.New("msg packed error")
+	}
+	// 数据发送
+	if _, err = c.Conn.Write(msg); err != nil {
+		fmt.Printf("read msg send error: %v", err)
+		c.ExitBuffChan <- true
+		return errors.New("msg send error")
+	}
+	return nil
+}
+
 // StartReader 处理 conn 数据读取的 goroutine
 func (c *Connection) StartReader() {
 	fmt.Println("Reader goroutine is running")
 	defer fmt.Printf("%s conn reader exit.", c.RemoteAddr().String())
 	defer c.Stop()
 	for {
-		buf := make([]byte, 512)
-		_, err := c.Conn.Read(buf)
-		if err != nil {
-			fmt.Printf("recv buf error: %v", err)
+		// 创建封包解包对象
+		dp := NewDataPack()
+		// 读取客户端消息头
+		headBuf := make([]byte, dp.GetHeaderLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headBuf); err != nil {
+			fmt.Printf("read msg head error: %v", err)
 			c.ExitBuffChan <- true
 			continue
 		}
+		// 解包 head 数据
+		msg, err := dp.Unpack(headBuf)
+		if err != nil {
+			fmt.Printf("unpacked error: %v", err)
+			c.ExitBuffChan <- true
+			continue
+		}
+		// 解包 body 数据
+		var bodyBuf []byte
+		if msg.GetDataLen() > 0 {
+			bodyBuf = make([]byte, msg.GetDataLen())
+			if _, err = io.ReadFull(c.GetTCPConnection(), bodyBuf); err != nil {
+				fmt.Printf("read msg body error: %v", err)
+				c.ExitBuffChan <- true
+				continue
+			}
+		}
+		msg.SetData(bodyBuf)
 		req := Request{
 			conn: c,
-			data: buf,
+			data: msg,
 		}
 		go func(request ziface.IRequest) { // 从 Routers 中找到注册绑定 Conn 的对应 HandleFunc
-			//c.Router.PreHandle(request)
+			c.Router.PreHandle(request)
 			c.Router.Handle(request)
-			//c.Router.PostHandle(request)
+			c.Router.PostHandle(request)
 		}(&req)
 	}
 }
