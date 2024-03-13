@@ -10,20 +10,20 @@ import (
 
 // Connection 连接实现
 type Connection struct {
-	Conn         *net.TCPConn   // 当前连接 socket
-	ConnID       uint32         // session id
-	Closed       bool           // 连接状态
-	Router       ziface.IRouter // 路由
-	ExitBuffChan chan bool      // 退出通知 channel
+	Conn         *net.TCPConn      // 当前连接 socket
+	ConnID       uint32            // session id
+	Closed       bool              // 连接状态
+	MsgHandler   ziface.IMsgHandle // 业务处理逻辑
+	ExitBuffChan chan bool         // 退出通知 channel
 }
 
 // NewConnection 连接构造器
-func NewConnection(conn *net.TCPConn, connID uint32, router ziface.IRouter) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, handler ziface.IMsgHandle) *Connection {
 	return &Connection{
 		Conn:         conn,
 		ConnID:       connID,
 		Closed:       false,
-		Router:       router,
+		MsgHandler:   handler,
 		ExitBuffChan: make(chan bool, 1),
 	}
 }
@@ -122,10 +122,11 @@ func (c *Connection) StartReader() {
 			conn: c,
 			data: msg,
 		}
-		go func(request ziface.IRequest) { // 从 Routers 中找到注册绑定 Conn 的对应 HandleFunc
-			c.Router.PreHandle(request)
-			c.Router.Handle(request)
-			c.Router.PostHandle(request)
-		}(&req)
+		//go func(request ziface.IRequest) { // 从 Routers 中找到注册绑定 Conn 的对应 HandleFunc
+		//	c.Router.PreHandle(request)
+		//	c.Router.Handle(request)
+		//	c.Router.PostHandle(request)
+		//}(&req)
+		go c.MsgHandler.DoMsgHandler(&req) // 从绑定好的消息 & 对应方法中执行对应的 Handle 方法
 	}
 }

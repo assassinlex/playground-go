@@ -15,7 +15,7 @@ func (p *PingRouter) PreHandle(_ ziface.IRequest) {
 }
 
 func (p *PingRouter) Handle(request ziface.IRequest) {
-	fmt.Println("Call router Handle")
+	fmt.Println("Call ping router Handle")
 	if err := request.GetConnection().SendMsg(request.GetMsgID(), []byte("ping...ping...ping")); err != nil {
 		fmt.Println("call back ping error")
 	}

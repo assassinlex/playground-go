@@ -9,22 +9,22 @@ import (
 
 // Server 服务器实现
 type Server struct {
-	Name      string         // 名称
-	IPVersion string         // ipv4 or ipv6
-	IP        string         // 地址
-	Port      int            // 端口
-	Router    ziface.IRouter // 路由
+	Name       string            // 名称
+	IPVersion  string            // ipv4 or ipv6
+	IP         string            // 地址
+	Port       int               // 端口
+	msgHandler ziface.IMsgHandle // 业务处理逻辑
 }
 
 // NewServer Server 构造器
 func NewServer() ziface.IServer {
 	utils.GlobalObject.Reload()
 	return &Server{
-		Name:      utils.GlobalObject.Name,
-		IPVersion: "tcp4",
-		IP:        utils.GlobalObject.Host,
-		Port:      utils.GlobalObject.TcpPort,
-		Router:    nil,
+		Name:       utils.GlobalObject.Name,
+		IPVersion:  "tcp4",
+		IP:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.TcpPort,
+		msgHandler: NewMsgHandle(),
 	}
 }
 
@@ -55,7 +55,7 @@ func (s *Server) Start() {
 			}
 			//	3.2 todo 设置服务器最大连接数控制
 			//	3.3 处理客户端请求, conn & handler 绑定
-			dealConn := NewConnection(conn, cid, s.Router)
+			dealConn := NewConnection(conn, cid, s.msgHandler)
 			cid++
 
 			// 3.4 调用当前连接处理业务
@@ -76,8 +76,8 @@ func (s *Server) Serve() {
 	select {}
 }
 
-func (s *Server) AddRouter(router ziface.IRouter) {
-	s.Router = router
+func (s *Server) AddRouter(id uint32, router ziface.IRouter) {
+	s.msgHandler.AddRouter(id, router)
 	fmt.Println("Add router succeed.")
 }
 

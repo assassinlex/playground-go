@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -19,7 +20,7 @@ func TestClient(t *testing.T) {
 	for {
 		dp := NewDataPack()
 		// 打包消息数据 & 发送
-		msg := NewMsgPackage(1, []byte("test msg"))
+		msg := NewMsgPackage(uint32(rand.Intn(2)), []byte("test msg"))
 		req, _ := dp.Pack(msg)
 		_, err = conn.Write(req)
 		if err != nil {
@@ -54,6 +55,7 @@ func TestClient(t *testing.T) {
 
 func TestServer(t *testing.T) {
 	s := NewServer()
-	s.AddRouter(&PingRouter{})
+	s.AddRouter(0, &PingRouter{})
+	s.AddRouter(1, &HelloRouter{})
 	s.Serve()
 }
