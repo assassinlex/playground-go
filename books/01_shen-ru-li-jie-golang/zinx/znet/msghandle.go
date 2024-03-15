@@ -20,9 +20,9 @@ func (m *MsgHandle) DoMsgHandler(request ziface.IRequest) {
 	if !ok {
 		fmt.Printf("api msg-id: %d is nout found\n", request.GetMsgID())
 	}
-	handler.PreHandle(request)
+	//handler.PreHandle(request)
 	handler.Handle(request)
-	handler.PostHandle(request)
+	//handler.PostHandle(request)
 }
 
 // AddRouter 添加消息处理逻辑
