@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"playground/books/01_shen-ru-li-jie-golang/zinx/utils"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/ziface"
 )
 
@@ -95,7 +96,9 @@ func (c *Connection) StartReader() {
 		// 读取客户端消息头
 		headBuf := make([]byte, dp.GetHeaderLen())
 		if _, err := io.ReadFull(c.GetTCPConnection(), headBuf); err != nil {
-			fmt.Printf("read msg head error: %v", err)
+			if err.Error() != "EOF" {
+				fmt.Printf("read msg head error: %v\n", err)
+			}
 			c.ExitBuffChan <- true
 			continue
 		}
@@ -117,16 +120,15 @@ func (c *Connection) StartReader() {
 			}
 		}
 		msg.SetData(bodyBuf)
-		req := Request{
+		req := &Request{
 			conn: c,
 			data: msg,
 		}
-		//go func(request ziface.IRequest) { // 从 Routers 中找到注册绑定 Conn 的对应 HandleFunc
-		//	c.Router.PreHandle(request)
-		//	c.Router.Handle(request)
-		//	c.Router.PostHandle(request)
-		//}(&req)
-		go c.MsgHandler.DoMsgHandler(&req) // 从绑定好的消息 & 对应方法中执行对应的 Handle 方法
+		if utils.GlobalObject.WorkerPoolSize > 0 { // 工作池模式
+			c.MsgHandler.SendMsgToTaskQueue(req)
+		} else { // 非工作池模式
+			go c.MsgHandler.DoMsgHandler(req) // 从绑定好的消息 & 对应方法中执行对应的 Handle 方法
+		}
 	}
 }
 

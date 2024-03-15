@@ -2,6 +2,7 @@ package znet
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/utils"
 	"playground/books/01_shen-ru-li-jie-golang/zinx/ziface"
@@ -32,6 +33,8 @@ func (s *Server) Start() {
 	fmt.Printf("[START] Server listenning at IP: %s:%d\n", s.IP, s.Port)
 	fmt.Printf("[Zinx] Server config %v\n", utils.GlobalObject)
 	go func() {
+		// 0. 启动工作池模式
+		s.msgHandler.StartWorkerPool()
 		// 1. 获取 TCP Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
@@ -43,8 +46,7 @@ func (s *Server) Start() {
 			panic(fmt.Sprintf("listen tcp addr failed: %v", err))
 		}
 		fmt.Printf("start Zinx server %s:%d succees.\n", s.IP, s.Port)
-		// todo: 生成 connection id
-		cid := s.ConnIDGenerator()
+		cid := s.ConnIDGenerator() // 生成 connection id
 		//	3. 启动 server
 		for {
 			// 3.1 接受客户端链接
@@ -53,12 +55,11 @@ func (s *Server) Start() {
 				fmt.Printf("Accept err: %v", err)
 				continue
 			}
-			//	3.2 todo 设置服务器最大连接数控制
-			//	3.3 处理客户端请求, conn & handler 绑定
+			//	3.2 处理客户端请求, conn & handler 绑定
 			dealConn := NewConnection(conn, cid, s.msgHandler)
 			cid++
 
-			// 3.4 调用当前连接处理业务
+			// 3.3 调用当前连接处理业务
 			go dealConn.Start()
 		}
 	}()
@@ -83,8 +84,7 @@ func (s *Server) AddRouter(id uint32, router ziface.IRouter) {
 
 // ConnIDGenerator connID 生成器
 func (s *Server) ConnIDGenerator() uint32 {
-	// todo:: 逻辑待实现
-	return 0
+	return uint32(rand.Intn(100000000))
 }
 
 // Callback2Client 回声服务
