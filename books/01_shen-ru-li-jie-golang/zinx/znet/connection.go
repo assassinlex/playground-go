@@ -11,49 +11,54 @@ import (
 
 // Connection 连接实现
 type Connection struct {
+	TcpServer    ziface.IServer    // 当前 connection 所属的 Server
 	Conn         *net.TCPConn      // 当前连接 socket
 	ConnID       uint32            // session id
 	Closed       bool              // 连接状态
 	MsgHandler   ziface.IMsgHandle // 业务处理逻辑
 	ExitBuffChan chan bool         // 退出通知 channel
-	msgChan      chan []byte       // 读写 goroutine 之间的消息管道
+	msgChan      chan []byte       // 读写 goroutine 之间的消息管道(无缓冲)
+	msgBufChan   chan []byte       // 读写 goroutine 之间的消息管道(有缓冲)
 }
 
 // NewConnection 连接构造器
-func NewConnection(conn *net.TCPConn, connID uint32, handler ziface.IMsgHandle) *Connection {
-	return &Connection{
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, handler ziface.IMsgHandle) *Connection {
+	c := &Connection{
+		TcpServer:    server,
 		Conn:         conn,
 		ConnID:       connID,
 		Closed:       false,
 		MsgHandler:   handler,
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
+		msgBufChan:   make(chan []byte, utils.GlobalObject.MaxWorkerTaskLen),
 	}
+	c.TcpServer.GetConnMgr().Add(c) // 将创建的 connection 添加到 ConnManager 中
+	return c
 }
 
 // Start 连接启动 & 工作
 func (c *Connection) Start() {
-	go c.StartReader() // 读取客户端请求数据 & 执行业务逻辑
-	go c.StartWriter() // 响应客户端
-	for {
-		select {
-		case <-c.ExitBuffChan: // 获取退出信号后直接返回
-			return
-		}
-	}
+	go c.StartReader()             // 读取客户端请求数据 & 执行业务逻辑
+	go c.StartWriter()             // 响应客户端
+	c.TcpServer.CallOnConnStart(c) // 钩子函数
 }
 
 func (c *Connection) Stop() {
+	fmt.Printf("conn stopping conn id = %d\n", c.GetConnID())
 	if c.Closed {
 		return
 	}
 	c.Closed = true
 
-	// todo: 关闭回调 显示调用
-
-	_ = c.Conn.Close()     // 关闭 socket 连接
-	c.ExitBuffChan <- true // 通知缓冲队列读取数据的业务, 该链接已经关闭
-	close(c.ExitBuffChan)  // 关闭该连接的全部 channel
+	// 关闭回调 显示调用
+	c.TcpServer.CallOnConnStop(c)
+	_ = c.Conn.Close()                 // 关闭 socket 连接
+	c.ExitBuffChan <- true             // 通知缓冲队列读取数据的业务, 该连接已经关闭
+	c.TcpServer.GetConnMgr().Remove(c) // 将当前 conn 从 ConnManager 中移除
+	close(c.ExitBuffChan)              // 关闭该连接的全部 channel
+	close(c.msgChan)                   // 关闭该连接的全部 channel
+	close(c.msgBufChan)                // 关闭该连接的全部 channel
 }
 
 func (c *Connection) GetTCPConnection() *net.TCPConn {
@@ -85,10 +90,27 @@ func (c *Connection) SendMsg(id uint32, data []byte) error {
 	return nil
 }
 
+func (c *Connection) SendBufMsg(id uint32, data []byte) error {
+	// 连接可用性检测
+	if c.Closed == true {
+		return errors.New("当前连接已关闭, 发送数据失败")
+	}
+	// 数据封包
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(id, data))
+	if err != nil {
+		fmt.Printf("msg packed error: id = %d\n", id)
+		return errors.New("msg packed error")
+	}
+	// 数据发送
+	c.msgBufChan <- msg
+	return nil
+}
+
 // StartReader 处理 conn 数据读取的 goroutine
 func (c *Connection) StartReader() {
-	fmt.Println("Reader goroutine is running")
-	defer fmt.Printf("%s conn reader exit.", c.RemoteAddr().String())
+	fmt.Println("[Reader goroutine is running]")
+	defer fmt.Printf("%s conn reader exit!\n", c.RemoteAddr().String())
 	defer c.Stop()
 	for {
 		// 创建封包解包对象
@@ -134,7 +156,7 @@ func (c *Connection) StartReader() {
 
 // StartWriter 写数据 goroutine
 func (c *Connection) StartWriter() {
-	fmt.Println("[Writer goroutine si running]")
+	fmt.Println("[Writer goroutine is running]")
 	defer fmt.Printf("%s conn writer exit!\n", c.RemoteAddr().String())
 	for {
 		select {
@@ -142,6 +164,16 @@ func (c *Connection) StartWriter() {
 			if _, err := c.Conn.Write(data); err != nil {
 				fmt.Printf("send data error: %s,m conn writer exit!\n", err)
 				return
+			}
+		case data, ok := <-c.msgBufChan: // 写数据
+			if ok {
+				if _, err := c.Conn.Write(data); err != nil {
+					fmt.Printf("send data error: %s,m conn writer exit!\n", err)
+					return
+				}
+			} else {
+				fmt.Println("msgBufChan is closed.")
+				break
 			}
 		case <-c.ExitBuffChan: // goroutine 退出
 			return
