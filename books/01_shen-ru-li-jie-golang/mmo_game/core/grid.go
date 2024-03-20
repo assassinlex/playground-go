@@ -55,7 +55,7 @@ func (g *Grid) GetPlayIDs() []int {
 // 重写格式化输出方法
 func (g *Grid) String() string {
 	return fmt.Sprintf(
-		"Grid id:%d minX:%d maxX:%d minY:%d maxY:%d playIDs:%v",
+		"Grid id:%d minX:%d maxX:%d minY:%d maxY:%d playIDs:%v\n",
 		g.GID, g.MinX, g.MaxX, g.MinY, g.MaxY, g.playerIDs,
 	)
 }
